@@ -2,8 +2,8 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Quét CCCD Việt Nam</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>QR CCCD Scanner</title>
 
     <style>
         * {
@@ -12,52 +12,16 @@
 
         body {
             margin: 0;
-            background: #0f172a;
+            background: #000;
             color: white;
             font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .scanner-wrapper {
-            width: 100%;
-            max-width: 500px;
-        }
-
-        .card {
-            background: #111827;
-            border-radius: 20px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
-        .header {
-            padding: 18px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .header h2 {
-            margin: 0;
-            font-size: 22px;
-        }
-
-        .header p {
-            margin-top: 8px;
-            color: #94a3b8;
-            font-size: 14px;
-        }
-
-        .camera-box {
+        #app {
             position: relative;
-            width: 100%;
-            aspect-ratio: 3/4;
-            background: black;
-            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
         }
 
         video {
@@ -72,274 +36,297 @@
             pointer-events: none;
         }
 
-        .card-frame {
+        /* vùng focus QR */
+
+        .scan-box {
             position: absolute;
-            width: 85%;
-            aspect-ratio: 1.58/1;
-            border: 3px solid #22c55e;
-            border-radius: 16px;
-            top: 50%;
+            width: 220px;
+            height: 220px;
             left: 50%;
+            top: 50%;
             transform: translate(-50%, -50%);
+            border-radius: 20px;
+            border: 3px solid #22c55e;
             box-shadow:
-                0 0 0 9999px rgba(0,0,0,0.45),
-                0 0 20px rgba(34,197,94,0.6);
+                0 0 0 9999px rgba(0,0,0,.55),
+                0 0 20px rgba(34,197,94,.8);
         }
 
-        .qr-highlight {
+        /* góc */
+
+        .corner {
             position: absolute;
-            width: 90px;
-            height: 90px;
-            right: 9%;
-            top: 54%;
-            border: 3px solid #facc15;
-            border-radius: 12px;
-            animation: pulse 1.2s infinite;
+            width: 30px;
+            height: 30px;
+            border-color: #22c55e;
+            border-style: solid;
         }
 
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.05);
-                opacity: 0.7;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
+        .tl {
+            top: -3px;
+            left: -3px;
+            border-width: 4px 0 0 4px;
+            border-top-left-radius: 16px;
         }
+
+        .tr {
+            top: -3px;
+            right: -3px;
+            border-width: 4px 4px 0 0;
+            border-top-right-radius: 16px;
+        }
+
+        .bl {
+            bottom: -3px;
+            left: -3px;
+            border-width: 0 0 4px 4px;
+            border-bottom-left-radius: 16px;
+        }
+
+        .br {
+            bottom: -3px;
+            right: -3px;
+            border-width: 0 4px 4px 0;
+            border-bottom-right-radius: 16px;
+        }
+
+        /* line scan */
 
         .scan-line {
             position: absolute;
-            left: 7%;
-            right: 7%;
+            left: 10px;
+            right: 10px;
             height: 3px;
             background: #22c55e;
             box-shadow: 0 0 10px #22c55e;
-            animation: scan 2.5s linear infinite;
+            animation: scan 2s linear infinite;
         }
 
         @keyframes scan {
             0% {
-                top: 20%;
+                top: 15px;
             }
+
             100% {
-                top: 80%;
+                top: calc(100% - 15px);
             }
         }
 
-        .controls {
+        .bottom-ui {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 14px;
+            color: rgba(255,255,255,.85);
+            font-size: 15px;
+        }
+
+        .result {
+            background: rgba(15,23,42,.92);
+            border-radius: 16px;
             padding: 16px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .row {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .row span {
+            color: #94a3b8;
         }
 
         button {
             width: 100%;
             border: none;
-            border-radius: 12px;
             padding: 14px;
+            border-radius: 14px;
             font-size: 16px;
             font-weight: bold;
-            cursor: pointer;
             background: #2563eb;
             color: white;
-            transition: 0.2s;
+            cursor: pointer;
+            margin-top: 12px;
         }
 
         button:hover {
             background: #1d4ed8;
         }
-
-        .result {
-            margin-top: 16px;
-            background: #0b1220;
-            border-radius: 14px;
-            padding: 14px;
-            border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .result-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #22c55e;
-        }
-
-        .field {
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .field span {
-            color: #94a3b8;
-        }
-
-        .raw {
-            margin-top: 12px;
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-            word-break: break-all;
-            font-size: 13px;
-            color: #facc15;
-        }
-
-        .status {
-            text-align: center;
-            margin-top: 12px;
-            font-size: 14px;
-            color: #94a3b8;
-        }
     </style>
 </head>
+
 <body>
 
-<div class="scanner-wrapper">
-    <div class="card">
+<div id="app">
 
-        <div class="header">
-            <h2>Quét CCCD Việt Nam</h2>
-            <p>Đưa mã QR vào vùng vàng để quét nhanh hơn</p>
+    <video id="video" playsinline></video>
+
+    <div class="overlay">
+
+        <div class="scan-box">
+
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+
+            <div class="scan-line"></div>
+
         </div>
 
-        <div class="camera-box">
-            <video id="video" playsinline></video>
-
-            <div class="overlay">
-                <div class="card-frame"></div>
-                <div class="qr-highlight"></div>
-                <div class="scan-line"></div>
-            </div>
-        </div>
-
-        <div class="controls">
-            <button id="startBtn">Bắt đầu quét</button>
-
-            <div class="status" id="status">
-                Chưa bắt đầu camera
-            </div>
-
-            <div class="result" id="result" style="display:none;">
-                <div class="result-title">Thông tin CCCD</div>
-
-                <div class="field">
-                    <span>Số CCCD:</span>
-                    <strong id="id"></strong>
-                </div>
-
-                <div class="field">
-                    <span>Họ tên:</span>
-                    <strong id="name"></strong>
-                </div>
-
-                <div class="field">
-                    <span>Ngày sinh:</span>
-                    <strong id="dob"></strong>
-                </div>
-
-                <div class="field">
-                    <span>Giới tính:</span>
-                    <strong id="gender"></strong>
-                </div>
-
-                <div class="field">
-                    <span>Địa chỉ:</span>
-                    <strong id="address"></strong>
-                </div>
-
-                <div class="raw" id="raw"></div>
-            </div>
-        </div>
     </div>
+
+    <div class="bottom-ui">
+
+        <div class="status" id="status">
+            Đưa mã QR vào giữa màn hình
+        </div>
+
+        <div class="result" id="result">
+
+            <div class="row">
+                <span>CCCD:</span>
+                <b id="cccd"></b>
+            </div>
+
+            <div class="row">
+                <span>Họ tên:</span>
+                <b id="name"></b>
+            </div>
+
+            <div class="row">
+                <span>Ngày sinh:</span>
+                <b id="dob"></b>
+            </div>
+
+            <div class="row">
+                <span>Giới tính:</span>
+                <b id="gender"></b>
+            </div>
+
+            <div class="row">
+                <span>Địa chỉ:</span>
+                <b id="address"></b>
+            </div>
+
+            <button id="scanAgain">
+                Quét lại
+            </button>
+
+        </div>
+
+    </div>
+
 </div>
 
 <script type="module">
+
     import QrScanner from "https://unpkg.com/qr-scanner@1.4.2/qr-scanner.min.js";
 
     const video = document.getElementById("video");
-    const startBtn = document.getElementById("startBtn");
+
     const statusText = document.getElementById("status");
 
     const resultBox = document.getElementById("result");
 
-    const idEl = document.getElementById("id");
+    const cccdEl = document.getElementById("cccd");
     const nameEl = document.getElementById("name");
     const dobEl = document.getElementById("dob");
     const genderEl = document.getElementById("gender");
     const addressEl = document.getElementById("address");
-    const rawEl = document.getElementById("raw");
 
-    let scanner = null;
+    const scanAgainBtn = document.getElementById("scanAgain");
+
+    let scanner;
     let scanned = false;
 
+    function formatDate(str) {
+
+        if (!str || str.length !== 8) {
+            return str;
+        }
+
+        return `${str.slice(0,2)}/${str.slice(2,4)}/${str.slice(4)}`;
+    }
+
     function parseCCCD(raw) {
+
         const parts = raw.split("|");
 
         return {
-            id: parts[0] || "",
-            oldId: parts[1] || "",
+            cccd: parts[0] || "",
             name: parts[2] || "",
-            dob: formatDate(parts[3] || ""),
+            dob: formatDate(parts[3]),
             gender: parts[4] || "",
-            address: parts[5] || "",
-            issueDate: formatDate(parts[6] || "")
+            address: parts[5] || ""
         };
-    }
-
-    function formatDate(str) {
-        if (!str || str.length !== 8) return str;
-
-        return `${str.slice(0,2)}/${str.slice(2,4)}/${str.slice(4)}`;
     }
 
     async function startScanner() {
 
         scanned = false;
 
+        resultBox.style.display = "none";
+
         statusText.innerText = "Đang mở camera...";
 
         scanner = new QrScanner(
             video,
-            (result) => {
+
+            result => {
 
                 if (scanned) return;
 
                 scanned = true;
 
-                const raw = result.data;
+                scanner.stop();
 
                 statusText.innerText = "Quét thành công";
 
-                try {
+                const data = parseCCCD(result.data);
 
-                    const data = parseCCCD(raw);
+                cccdEl.innerText = data.cccd;
+                nameEl.innerText = data.name;
+                dobEl.innerText = data.dob;
+                genderEl.innerText = data.gender;
+                addressEl.innerText = data.address;
 
-                    idEl.innerText = data.id;
-                    nameEl.innerText = data.name;
-                    dobEl.innerText = data.dob;
-                    genderEl.innerText = data.gender;
-                    addressEl.innerText = data.address;
-
-                    rawEl.innerText = raw;
-
-                    resultBox.style.display = "block";
-
-                } catch (e) {
-
-                    rawEl.innerText = raw;
-
-                    resultBox.style.display = "block";
-                }
-
-                scanner.stop();
+                resultBox.style.display = "block";
             },
+
             {
                 preferredCamera: "environment",
-                highlightScanRegion: false,
-                highlightCodeOutline: false,
+
                 maxScansPerSecond: 20,
+
                 returnDetailedScanResult: true,
+
+                /* CHỈ scan vùng giữa */
+
+                calculateScanRegion(video) {
+
+                    const smallest = Math.min(
+                        video.videoWidth,
+                        video.videoHeight
+                    );
+
+                    const size = smallest * 0.45;
+
+                    return {
+                        x: (video.videoWidth - size) / 2,
+                        y: (video.videoHeight - size) / 2,
+                        width: size,
+                        height: size,
+                    };
+                },
             }
         );
 
@@ -347,27 +334,27 @@
 
             await scanner.start();
 
-            statusText.innerText = "Đưa QR CCCD vào camera";
+            statusText.innerText =
+                "Đưa QR CCCD vào ô giữa";
 
         } catch (e) {
 
             console.error(e);
 
             statusText.innerText =
-                "Không thể mở camera. Hãy cấp quyền camera.";
+                "Không mở được camera";
         }
     }
 
-    startBtn.addEventListener("click", () => {
+    scanAgainBtn.addEventListener("click", () => {
 
-        resultBox.style.display = "none";
-
-        if (scanner) {
-            scanner.stop();
-        }
+        scanner.destroy();
 
         startScanner();
     });
+
+    startScanner();
+
 </script>
 
 </body>
