@@ -4,14 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QR CCCD Scanner</title>
-
     <style>
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
-        margin: 0;
         background: #000;
         overflow: hidden;
         font-family: Arial, sans-serif;
@@ -30,68 +26,54 @@
         object-fit: cover;
       }
 
-      canvas {
-        display: none;
-      }
+      canvas { display: none; }
 
-      .overlay {
+      #overlay {
         position: absolute;
         inset: 0;
         pointer-events: none;
       }
 
-      .scan-box {
+      #svgOverlay {
         position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
 
+      /* scan line sits inside the visual guide box */
+      #guide-box {
+        position: absolute;
         width: 240px;
         height: 240px;
-
         left: 50%;
         top: 50%;
-
         transform: translate(-50%, -50%);
-
-        border-radius: 24px;
-
-        border: 3px solid #22c55e;
-
-        box-shadow:
-          0 0 0 9999px rgba(0, 0, 0, 0.55),
-          0 0 30px rgba(34, 197, 94, 0.8);
+        overflow: hidden;
+        pointer-events: none;
       }
 
       .scan-line {
         position: absolute;
-
-        left: 10px;
-        right: 10px;
-
-        height: 3px;
-
+        left: 0; right: 0;
+        height: 2px;
         background: #22c55e;
-
-        box-shadow: 0 0 12px #22c55e;
-
-        animation: scan 2s linear infinite;
+        box-shadow: 0 0 10px #22c55e;
+        animation: scanAnim 2s linear infinite;
+        opacity: 0;
+        transition: opacity 0.3s;
       }
+      .scan-line.active { opacity: 1; }
 
-      @keyframes scan {
-        from {
-          top: 12px;
-        }
-
-        to {
-          top: calc(100% - 12px);
-        }
+      @keyframes scanAnim {
+        from { top: 0; }
+        to   { top: 100%; }
       }
 
       .bottom-ui {
         position: absolute;
-
-        left: 20px;
-        right: 20px;
-        bottom: 30px;
-
+        left: 20px; right: 20px; bottom: 30px;
         z-index: 10;
       }
 
@@ -99,98 +81,73 @@
         text-align: center;
         margin-bottom: 14px;
         font-size: 15px;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.8);
       }
 
       .result {
         display: none;
-
         background: rgba(15, 23, 42, 0.92);
-
         border-radius: 18px;
-
         padding: 16px;
-
         backdrop-filter: blur(10px);
       }
 
-      .row {
-        margin-bottom: 8px;
-        font-size: 14px;
-      }
-
-      .row span {
-        color: #94a3b8;
-      }
+      .row { margin-bottom: 8px; font-size: 14px; }
+      .row span { color: #94a3b8; }
 
       button {
         width: 100%;
-
         border: none;
-
         padding: 14px;
-
         border-radius: 14px;
-
         background: #2563eb;
-
         color: white;
-
         font-size: 16px;
-
         font-weight: bold;
-
         cursor: pointer;
-
         margin-top: 12px;
       }
-
-      button:hover {
-        background: #1d4ed8;
-      }
+      button:hover { background: #1d4ed8; }
     </style>
   </head>
-
   <body>
     <div id="app">
       <video id="video" playsinline></video>
-
       <canvas id="canvas"></canvas>
 
-      <div class="overlay">
-        <div class="scan-box">
-          <div class="scan-line"></div>
+      <div id="overlay">
+        <svg id="svgOverlay" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <mask id="hole">
+              <rect width="100%" height="100%" fill="white"/>
+              <rect id="maskHole" rx="20" fill="black"/>
+            </mask>
+          </defs>
+
+          <!-- dark vignette with transparent hole -->
+          <rect width="100%" height="100%" fill="rgba(0,0,0,0.55)" mask="url(#hole)"/>
+
+          <!-- 4 corner brackets -->
+          <polyline id="btl" fill="none" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline id="btr" fill="none" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline id="bbl" fill="none" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline id="bbr" fill="none" stroke="#22c55e" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+
+        <!-- scan line (visual only, inside guide box) -->
+        <div id="guide-box">
+          <div class="scan-line active" id="scanLine"></div>
         </div>
       </div>
 
       <div class="bottom-ui">
         <div class="status" id="status">Đưa QR CCCD vào giữa màn hình</div>
-
         <div class="result" id="result">
-          <div class="row">
-            <span>CCCD:</span>
-            <b id="cccd"></b>
-          </div>
-
-          <div class="row">
-            <span>Họ tên:</span>
-            <b id="name"></b>
-          </div>
-
-          <div class="row">
-            <span>Ngày sinh:</span>
-            <b id="dob"></b>
-          </div>
-
-          <div class="row">
-            <span>Giới tính:</span>
-            <b id="gender"></b>
-          </div>
-
-          <div class="row">
-            <span>Địa chỉ:</span>
-            <b id="address"></b>
-          </div>
-
+          <div class="row"><span>CCCD: </span><b id="cccd"></b></div>
+          <div class="row"><span>Họ tên: </span><b id="name"></b></div>
+          <div class="row"><span>Ngày sinh: </span><b id="dob"></b></div>
+          <div class="row"><span>Giới tính: </span><b id="gender"></b></div>
+          <div class="row"><span>Địa chỉ: </span><b id="address"></b></div>
           <button id="scanAgain">Quét lại</button>
         </div>
       </div>
@@ -199,155 +156,137 @@
     <script type="module">
       import QrScanner from "https://unpkg.com/qr-scanner@1.4.2/qr-scanner.min.js";
 
-      const video = document.getElementById("video");
-
-      const canvas = document.getElementById("canvas");
-
-      const ctx = canvas.getContext("2d", {
-        willReadFrequently: true,
-      });
-
+      const video      = document.getElementById("video");
+      const canvas     = document.getElementById("canvas");
+      const ctx        = canvas.getContext("2d", { willReadFrequently: true });
       const statusText = document.getElementById("status");
+      const resultBox  = document.getElementById("result");
+      const scanLine   = document.getElementById("scanLine");
+      const guideBox   = document.getElementById("guide-box");
+      const maskHole   = document.getElementById("maskHole");
+      const btl = document.getElementById("btl");
+      const btr = document.getElementById("btr");
+      const bbl = document.getElementById("bbl");
+      const bbr = document.getElementById("bbr");
 
-      const resultBox = document.getElementById("result");
+      let scanning  = true;
+      let snapLock  = false;
 
-      const cccdEl = document.getElementById("cccd");
-      const nameEl = document.getElementById("name");
-      const dobEl = document.getElementById("dob");
-      const genderEl = document.getElementById("gender");
-      const addressEl = document.getElementById("address");
+      // current interpolated bracket rect (screen px)
+      let cx = 0, cy = 0, cw = 0, ch = 0;
+      // target bracket rect
+      let tx = 0, ty = 0, tw = 0, th = 0;
 
-      const scanAgainBtn = document.getElementById("scanAgain");
+      const ARM = 30;   // arm length of each corner bracket
+      const CR  = 10;   // inner corner offset (L-shape "radius")
 
-      let stream = null;
+      function drawBrackets(x, y, w, h) {
+        btl.setAttribute("points", `${x+ARM},${y}  ${x+CR},${y}  ${x},${y+CR}  ${x},${y+ARM}`);
+        btr.setAttribute("points", `${x+w-ARM},${y}  ${x+w-CR},${y}  ${x+w},${y+CR}  ${x+w},${y+ARM}`);
+        bbl.setAttribute("points", `${x+ARM},${y+h}  ${x+CR},${y+h}  ${x},${y+h-CR}  ${x},${y+h-ARM}`);
+        bbr.setAttribute("points", `${x+w-ARM},${y+h}  ${x+w-CR},${y+h}  ${x+w},${y+h-CR}  ${x+w},${y+h-ARM}`);
 
-      let scanning = true;
+        maskHole.setAttribute("x",      x - 6);
+        maskHole.setAttribute("y",      y - 6);
+        maskHole.setAttribute("width",  w + 12);
+        maskHole.setAttribute("height", h + 12);
+      }
 
+      function guideRect() {
+        const r = guideBox.getBoundingClientRect();
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+      }
+
+      function lerp(a, b, t) { return a + (b - a) * t; }
+
+      function animLoop() {
+        if (!snapLock) {
+          const g = guideRect();
+          tx = g.x; ty = g.y; tw = g.w; th = g.h;
+        }
+        const t = 0.14;
+        cx = lerp(cx, tx, t);
+        cy = lerp(cy, ty, t);
+        cw = lerp(cw, tw, t);
+        ch = lerp(ch, th, t);
+        drawBrackets(cx, cy, cw, ch);
+        requestAnimationFrame(animLoop);
+      }
+
+      /* ── Map QR corners (crop-canvas px) → screen px ── */
+      function qrCornersToScreen(corners) {
+        const vw   = video.videoWidth;
+        const vh   = video.videoHeight;
+        const size = Math.min(vw, vh) * 0.80;
+        const offX = (vw - size) / 2;
+        const offY = (vh - size) / 2;
+
+        const vr   = video.getBoundingClientRect();
+        const scX  = vr.width  / vw;
+        const scY  = vr.height / vh;
+
+        const pts = corners.map(p => ({
+          x: vr.left + (p.x + offX) * scX,
+          y: vr.top  + (p.y + offY) * scY,
+        }));
+
+        const xs = pts.map(p => p.x);
+        const ys = pts.map(p => p.y);
+        return {
+          x: Math.min(...xs), y: Math.min(...ys),
+          w: Math.max(...xs) - Math.min(...xs),
+          h: Math.max(...ys) - Math.min(...ys),
+        };
+      }
+
+      /* ── Camera ── */
       async function startCamera() {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
-
-            width: {
-              ideal: 1920,
-            },
-
-            height: {
-              ideal: 1080,
-            },
+            width:  { ideal: 1920 },
+            height: { ideal: 1080 },
           },
         });
-
         video.srcObject = stream;
-
         await video.play();
 
         const track = stream.getVideoTracks()[0];
-
-        /* autofocus + zoom */
-
         try {
           await track.applyConstraints({
-            advanced: [
-              {
-                focusMode: "continuous",
-              },
-
-              {
-                zoom: 2,
-              },
-            ],
+            advanced: [{ focusMode: "continuous" }, { zoom: 2 }],
           });
-        } catch (e) {
-          console.log("focus/zoom unsupported");
-        }
+        } catch { /* ignore */ }
 
-        tick();
+        // init bracket at guide position
+        const g = guideRect();
+        cx = g.x; cy = g.y; cw = g.w; ch = g.h;
+        tx = cx; ty = cy; tw = cw; th = ch;
+        drawBrackets(cx, cy, cw, ch);
+
+        animLoop();
+        requestAnimationFrame(tick);
       }
 
-      function preprocess(imageData) {
-        const data = imageData.data;
-
-        const contrast = 2;
-
-        const threshold = 125;
-
-        for (let i = 0; i < data.length; i += 4) {
-          /* grayscale */
-
-          let gray =
-            data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-
-          /* contrast */
-
-          gray = (gray - 128) * contrast + 128;
-
-          /* threshold */
-
-          gray = gray > threshold ? 255 : 0;
-
-          data[i] = gray;
-          data[i + 1] = gray;
-          data[i + 2] = gray;
-        }
-
-        return imageData;
-      }
-
+      /* ── Scan loop ── */
       async function tick() {
-        if (!scanning) {
-          return;
-        }
-
+        if (!scanning) return;
         if (video.readyState !== video.HAVE_ENOUGH_DATA) {
           requestAnimationFrame(tick);
-
           return;
         }
 
-        const vw = video.videoWidth;
+        const vw   = video.videoWidth;
+        const vh   = video.videoHeight;
+        const size = Math.min(vw, vh) * 0.80;
+        const sx   = (vw - size) / 2;
+        const sy   = (vh - size) / 2;
 
-        const vh = video.videoHeight;
-
-        /*
-            chỉ scan vùng giữa
-        */
-
-        const size = Math.min(vw, vh) * 0.35;
-
-        const sx = (vw - size) / 2;
-
-        const sy = (vh - size) / 2;
-
-        canvas.width = size;
-
+        canvas.width  = size;
         canvas.height = size;
-
-        /*
-            crop camera
-        */
-
         ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
 
-        /*
-            lấy image data
-        */
-
-        let imageData = ctx.getImageData(0, 0, size, size);
-
-        /*
-            xử lý nền hoa văn CCCD
-        */
-
-        imageData = preprocess(imageData);
-
-        ctx.putImageData(imageData, 0, 0);
-
         try {
-          /*
-                decode QR bằng qr-scanner
-            */
-
           const result = await QrScanner.scanImage(canvas, {
             returnDetailedScanResult: true,
           });
@@ -355,73 +294,63 @@
           if (result?.data) {
             scanning = false;
 
-            handleResult(result.data);
+            // snap bracket to QR position if corners available
+            if (result.cornerPoints?.length === 4) {
+              const PAD = 18;
+              const r = qrCornersToScreen(result.cornerPoints);
+              tx = r.x - PAD;
+              ty = r.y - PAD;
+              tw = r.w + PAD * 2;
+              th = r.h + PAD * 2;
+              snapLock = true;
+            }
 
+            // short delay so bracket animates to QR before showing card
+            setTimeout(() => handleResult(result.data), 350);
             return;
           }
-        } catch (e) {
-          /*
-                chưa detect được
-            */
-        }
+        } catch { /* not found yet */ }
 
         requestAnimationFrame(tick);
       }
 
-      function formatDate(str) {
-        if (!str || str.length !== 8) {
-          return str;
-        }
-
-        return `
-            ${str.slice(0, 2)}/
-            ${str.slice(2, 4)}/
-            ${str.slice(4)}
-        `.replace(/\s/g, "");
+      /* ── Parse CCCD ── */
+      function formatDate(s) {
+        if (!s || s.length !== 8) return s;
+        return `${s.slice(0,2)}/${s.slice(2,4)}/${s.slice(4)}`;
       }
 
       function parseCCCD(raw) {
-        const parts = raw.split("|");
-
+        const p = raw.split("|");
         return {
-          cccd: parts[0] || "",
-
-          name: parts[2] || "",
-
-          dob: formatDate(parts[3]),
-
-          gender: parts[4] || "",
-
-          address: parts[5] || "",
+          cccd:    p[0] || "",
+          name:    p[2] || "",
+          dob:     formatDate(p[3]),
+          gender:  p[4] || "",
+          address: p[5] || "",
         };
       }
 
       function handleResult(raw) {
-        statusText.innerText = "Quét thành công";
+        statusText.innerText = "✅ Quét thành công";
+        scanLine.classList.remove("active");
 
-        const data = parseCCCD(raw);
-
-        cccdEl.innerText = data.cccd;
-
-        nameEl.innerText = data.name;
-
-        dobEl.innerText = data.dob;
-
-        genderEl.innerText = data.gender;
-
-        addressEl.innerText = data.address;
-
+        const d = parseCCCD(raw);
+        document.getElementById("cccd").innerText    = d.cccd;
+        document.getElementById("name").innerText    = d.name;
+        document.getElementById("dob").innerText     = d.dob;
+        document.getElementById("gender").innerText  = d.gender;
+        document.getElementById("address").innerText = d.address;
         resultBox.style.display = "block";
       }
 
-      scanAgainBtn.addEventListener("click", () => {
-        scanning = true;
-
+      document.getElementById("scanAgain").addEventListener("click", () => {
+        scanning  = true;
+        snapLock  = false;
         resultBox.style.display = "none";
-
         statusText.innerText = "Đưa QR CCCD vào giữa màn hình";
-
-        tick();
+        scanLine.classList.add("active");
+        requestAnimationFrame(tick);
       });
 
       startCamera();
