@@ -1,361 +1,430 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
+  <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>QR CCCD Scanner</title>
 
     <style>
-        * {
-            box-sizing: border-box;
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #000;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        color: white;
+      }
+
+      #app {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      canvas {
+        display: none;
+      }
+
+      .overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .scan-box {
+        position: absolute;
+
+        width: 240px;
+        height: 240px;
+
+        left: 50%;
+        top: 50%;
+
+        transform: translate(-50%, -50%);
+
+        border-radius: 24px;
+
+        border: 3px solid #22c55e;
+
+        box-shadow:
+          0 0 0 9999px rgba(0, 0, 0, 0.55),
+          0 0 30px rgba(34, 197, 94, 0.8);
+      }
+
+      .scan-line {
+        position: absolute;
+
+        left: 10px;
+        right: 10px;
+
+        height: 3px;
+
+        background: #22c55e;
+
+        box-shadow: 0 0 12px #22c55e;
+
+        animation: scan 2s linear infinite;
+      }
+
+      @keyframes scan {
+        from {
+          top: 12px;
         }
 
-        body {
-            margin: 0;
-            background: #000;
-            color: white;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
+        to {
+          top: calc(100% - 12px);
         }
+      }
 
-        #app {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
+      .bottom-ui {
+        position: absolute;
 
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        left: 20px;
+        right: 20px;
+        bottom: 30px;
 
-        .overlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-        }
+        z-index: 10;
+      }
 
-        /* vùng focus QR */
+      .status {
+        text-align: center;
+        margin-bottom: 14px;
+        font-size: 15px;
+      }
 
-        .scan-box {
-            position: absolute;
-            width: 220px;
-            height: 220px;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            border-radius: 20px;
-            border: 3px solid #22c55e;
-            box-shadow:
-                0 0 0 9999px rgba(0,0,0,.55),
-                0 0 20px rgba(34,197,94,.8);
-        }
+      .result {
+        display: none;
 
-        /* góc */
+        background: rgba(15, 23, 42, 0.92);
 
-        .corner {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            border-color: #22c55e;
-            border-style: solid;
-        }
+        border-radius: 18px;
 
-        .tl {
-            top: -3px;
-            left: -3px;
-            border-width: 4px 0 0 4px;
-            border-top-left-radius: 16px;
-        }
+        padding: 16px;
 
-        .tr {
-            top: -3px;
-            right: -3px;
-            border-width: 4px 4px 0 0;
-            border-top-right-radius: 16px;
-        }
+        backdrop-filter: blur(10px);
+      }
 
-        .bl {
-            bottom: -3px;
-            left: -3px;
-            border-width: 0 0 4px 4px;
-            border-bottom-left-radius: 16px;
-        }
+      .row {
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
 
-        .br {
-            bottom: -3px;
-            right: -3px;
-            border-width: 0 4px 4px 0;
-            border-bottom-right-radius: 16px;
-        }
+      .row span {
+        color: #94a3b8;
+      }
 
-        /* line scan */
+      button {
+        width: 100%;
 
-        .scan-line {
-            position: absolute;
-            left: 10px;
-            right: 10px;
-            height: 3px;
-            background: #22c55e;
-            box-shadow: 0 0 10px #22c55e;
-            animation: scan 2s linear infinite;
-        }
+        border: none;
 
-        @keyframes scan {
-            0% {
-                top: 15px;
-            }
+        padding: 14px;
 
-            100% {
-                top: calc(100% - 15px);
-            }
-        }
+        border-radius: 14px;
 
-        .bottom-ui {
-            position: absolute;
-            bottom: 30px;
-            left: 20px;
-            right: 20px;
-            z-index: 10;
-        }
+        background: #2563eb;
 
-        .status {
-            text-align: center;
-            margin-bottom: 14px;
-            color: rgba(255,255,255,.85);
-            font-size: 15px;
-        }
+        color: white;
 
-        .result {
-            background: rgba(15,23,42,.92);
-            border-radius: 16px;
-            padding: 16px;
-            backdrop-filter: blur(10px);
-            display: none;
-        }
+        font-size: 16px;
 
-        .row {
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
+        font-weight: bold;
 
-        .row span {
-            color: #94a3b8;
-        }
+        cursor: pointer;
 
-        button {
-            width: 100%;
-            border: none;
-            padding: 14px;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: bold;
-            background: #2563eb;
-            color: white;
-            cursor: pointer;
-            margin-top: 12px;
-        }
+        margin-top: 12px;
+      }
 
-        button:hover {
-            background: #1d4ed8;
-        }
+      button:hover {
+        background: #1d4ed8;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
+    <div id="app">
+      <video id="video" playsinline></video>
 
-<div id="app">
+      <canvas id="canvas"></canvas>
 
-    <video id="video" playsinline></video>
-
-    <div class="overlay">
-
+      <div class="overlay">
         <div class="scan-box">
-
-            <div class="corner tl"></div>
-            <div class="corner tr"></div>
-            <div class="corner bl"></div>
-            <div class="corner br"></div>
-
-            <div class="scan-line"></div>
-
+          <div class="scan-line"></div>
         </div>
+      </div>
 
-    </div>
-
-    <div class="bottom-ui">
-
-        <div class="status" id="status">
-            Đưa mã QR vào giữa màn hình
-        </div>
+      <div class="bottom-ui">
+        <div class="status" id="status">Đưa QR CCCD vào giữa màn hình</div>
 
         <div class="result" id="result">
+          <div class="row">
+            <span>CCCD:</span>
+            <b id="cccd"></b>
+          </div>
 
-            <div class="row">
-                <span>CCCD:</span>
-                <b id="cccd"></b>
-            </div>
+          <div class="row">
+            <span>Họ tên:</span>
+            <b id="name"></b>
+          </div>
 
-            <div class="row">
-                <span>Họ tên:</span>
-                <b id="name"></b>
-            </div>
+          <div class="row">
+            <span>Ngày sinh:</span>
+            <b id="dob"></b>
+          </div>
 
-            <div class="row">
-                <span>Ngày sinh:</span>
-                <b id="dob"></b>
-            </div>
+          <div class="row">
+            <span>Giới tính:</span>
+            <b id="gender"></b>
+          </div>
 
-            <div class="row">
-                <span>Giới tính:</span>
-                <b id="gender"></b>
-            </div>
+          <div class="row">
+            <span>Địa chỉ:</span>
+            <b id="address"></b>
+          </div>
 
-            <div class="row">
-                <span>Địa chỉ:</span>
-                <b id="address"></b>
-            </div>
-
-            <button id="scanAgain">
-                Quét lại
-            </button>
-
+          <button id="scanAgain">Quét lại</button>
         </div>
-
+      </div>
     </div>
 
-</div>
+    <script type="module">
+      import QrScanner from "https://unpkg.com/qr-scanner@1.4.2/qr-scanner.min.js";
 
-<script type="module">
+      const video = document.getElementById("video");
 
-    import QrScanner from "https://unpkg.com/qr-scanner@1.4.2/qr-scanner.min.js";
+      const canvas = document.getElementById("canvas");
 
-    const video = document.getElementById("video");
+      const ctx = canvas.getContext("2d", {
+        willReadFrequently: true,
+      });
 
-    const statusText = document.getElementById("status");
+      const statusText = document.getElementById("status");
 
-    const resultBox = document.getElementById("result");
+      const resultBox = document.getElementById("result");
 
-    const cccdEl = document.getElementById("cccd");
-    const nameEl = document.getElementById("name");
-    const dobEl = document.getElementById("dob");
-    const genderEl = document.getElementById("gender");
-    const addressEl = document.getElementById("address");
+      const cccdEl = document.getElementById("cccd");
+      const nameEl = document.getElementById("name");
+      const dobEl = document.getElementById("dob");
+      const genderEl = document.getElementById("gender");
+      const addressEl = document.getElementById("address");
 
-    const scanAgainBtn = document.getElementById("scanAgain");
+      const scanAgainBtn = document.getElementById("scanAgain");
 
-    let scanner;
-    let scanned = false;
+      let stream = null;
 
-    function formatDate(str) {
+      let scanning = true;
 
-        if (!str || str.length !== 8) {
-            return str;
+      async function startCamera() {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+
+            width: {
+              ideal: 1920,
+            },
+
+            height: {
+              ideal: 1080,
+            },
+          },
+        });
+
+        video.srcObject = stream;
+
+        await video.play();
+
+        const track = stream.getVideoTracks()[0];
+
+        /* autofocus + zoom */
+
+        try {
+          await track.applyConstraints({
+            advanced: [
+              {
+                focusMode: "continuous",
+              },
+
+              {
+                zoom: 2,
+              },
+            ],
+          });
+        } catch (e) {
+          console.log("focus/zoom unsupported");
         }
 
-        return `${str.slice(0,2)}/${str.slice(2,4)}/${str.slice(4)}`;
-    }
+        tick();
+      }
 
-    function parseCCCD(raw) {
+      function preprocess(imageData) {
+        const data = imageData.data;
 
+        const contrast = 2;
+
+        const threshold = 125;
+
+        for (let i = 0; i < data.length; i += 4) {
+          /* grayscale */
+
+          let gray =
+            data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+
+          /* contrast */
+
+          gray = (gray - 128) * contrast + 128;
+
+          /* threshold */
+
+          gray = gray > threshold ? 255 : 0;
+
+          data[i] = gray;
+          data[i + 1] = gray;
+          data[i + 2] = gray;
+        }
+
+        return imageData;
+      }
+
+      async function tick() {
+        if (!scanning) {
+          return;
+        }
+
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+          requestAnimationFrame(tick);
+
+          return;
+        }
+
+        const vw = video.videoWidth;
+
+        const vh = video.videoHeight;
+
+        /*
+            chỉ scan vùng giữa
+        */
+
+        const size = Math.min(vw, vh) * 0.35;
+
+        const sx = (vw - size) / 2;
+
+        const sy = (vh - size) / 2;
+
+        canvas.width = size;
+
+        canvas.height = size;
+
+        /*
+            crop camera
+        */
+
+        ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+
+        /*
+            lấy image data
+        */
+
+        let imageData = ctx.getImageData(0, 0, size, size);
+
+        /*
+            xử lý nền hoa văn CCCD
+        */
+
+        imageData = preprocess(imageData);
+
+        ctx.putImageData(imageData, 0, 0);
+
+        try {
+          /*
+                decode QR bằng qr-scanner
+            */
+
+          const result = await QrScanner.scanImage(canvas, {
+            returnDetailedScanResult: true,
+          });
+
+          if (result?.data) {
+            scanning = false;
+
+            handleResult(result.data);
+
+            return;
+          }
+        } catch (e) {
+          /*
+                chưa detect được
+            */
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      function formatDate(str) {
+        if (!str || str.length !== 8) {
+          return str;
+        }
+
+        return `
+            ${str.slice(0, 2)}/
+            ${str.slice(2, 4)}/
+            ${str.slice(4)}
+        `.replace(/\s/g, "");
+      }
+
+      function parseCCCD(raw) {
         const parts = raw.split("|");
 
         return {
-            cccd: parts[0] || "",
-            name: parts[2] || "",
-            dob: formatDate(parts[3]),
-            gender: parts[4] || "",
-            address: parts[5] || ""
+          cccd: parts[0] || "",
+
+          name: parts[2] || "",
+
+          dob: formatDate(parts[3]),
+
+          gender: parts[4] || "",
+
+          address: parts[5] || "",
         };
-    }
+      }
 
-    async function startScanner() {
+      function handleResult(raw) {
+        statusText.innerText = "Quét thành công";
 
-        scanned = false;
+        const data = parseCCCD(raw);
+
+        cccdEl.innerText = data.cccd;
+
+        nameEl.innerText = data.name;
+
+        dobEl.innerText = data.dob;
+
+        genderEl.innerText = data.gender;
+
+        addressEl.innerText = data.address;
+
+        resultBox.style.display = "block";
+      }
+
+      scanAgainBtn.addEventListener("click", () => {
+        scanning = true;
 
         resultBox.style.display = "none";
 
-        statusText.innerText = "Đang mở camera...";
+        statusText.innerText = "Đưa QR CCCD vào giữa màn hình";
 
-        scanner = new QrScanner(
-            video,
+        tick();
+      });
 
-            result => {
-
-                if (scanned) return;
-
-                scanned = true;
-
-                scanner.stop();
-
-                statusText.innerText = "Quét thành công";
-
-                const data = parseCCCD(result.data);
-
-                cccdEl.innerText = data.cccd;
-                nameEl.innerText = data.name;
-                dobEl.innerText = data.dob;
-                genderEl.innerText = data.gender;
-                addressEl.innerText = data.address;
-
-                resultBox.style.display = "block";
-            },
-
-            {
-                preferredCamera: "environment",
-
-                maxScansPerSecond: 20,
-
-                returnDetailedScanResult: true,
-
-                /* CHỈ scan vùng giữa */
-
-                calculateScanRegion(video) {
-
-                    const smallest = Math.min(
-                        video.videoWidth,
-                        video.videoHeight
-                    );
-
-                    const size = smallest * 0.45;
-
-                    return {
-                        x: (video.videoWidth - size) / 2,
-                        y: (video.videoHeight - size) / 2,
-                        width: size,
-                        height: size,
-                    };
-                },
-            }
-        );
-
-        try {
-
-            await scanner.start();
-
-            statusText.innerText =
-                "Đưa QR CCCD vào ô giữa";
-
-        } catch (e) {
-
-            console.error(e);
-
-            statusText.innerText =
-                "Không mở được camera";
-        }
-    }
-
-    scanAgainBtn.addEventListener("click", () => {
-
-        scanner.destroy();
-
-        startScanner();
-    });
-
-    startScanner();
-
-</script>
-
-</body>
+      startCamera();
+    </script>
+  </body>
 </html>
